@@ -1,5 +1,5 @@
-// Offline‑First Service Worker (v3)
-const VERSION = '2025-08-27-v3';
+// Offline‑First Service Worker (v3C)
+const VERSION = '2025-08-27-v3C';
 const CACHE = 'werksplan-cache-' + VERSION;
 const ASSETS = [
   './',
@@ -20,6 +20,7 @@ const ASSETS = [
   './src/export.js',
   './src/quality.js',
   './src/worker.js',
+  './src/store.js',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

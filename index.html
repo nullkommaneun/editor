@@ -39,7 +39,6 @@
         <p>Planskizze hochladen (PNG/JPG/SVG) oder direkt fotografieren. Ein Button, beide Optionen (OS‑Sheet).</p>
         <div class="field">
           <label class="button button-primary">
-            <!-- WICHTIG: kein capture‑Attribut, damit OS die Wahl (Kamera oder Dateien) anbietet -->
             <input type="file" id="file-input" accept="image/*" hidden>
             Bild auswählen / Kamera
           </label>
@@ -87,28 +86,22 @@
           <summary>Pipeline‑Timings</summary>
           <pre id="perf-report">–</pre>
         </details>
-        <details>
-          <summary>Ehrliche Einschätzung Auto‑Erkennung</summary>
-          <p>Die Pipeline (k‑means in Lab, Sobel + Otsu, Morphologie) liefert in der Praxis eine brauchbare Erstmaske. Grenzen: Druckartefakte, Schatten, komprimierte Scans → Randfehler. Halbautomat korrigiert mit 3 Werkzeugen.</p>
-        </details>
       </section>
 
       <section id="panel-step-3" class="panel-section">
         <h2>3 · Nacharbeit</h2>
         <div class="toolbar">
           <button data-tool="hand" class="tool active">Hand/Zoom</button>
+          <button data-tool="hall" class="tool">Halle</button>
           <button data-tool="wall" class="tool">Wand</button>
-          <button data-tool="zone" class="tool">Sperrzone</button>
-          <button data-tool="door" class="tool">Öffnung</button>
+          <button data-tool="zone" class="tool">Sperrfläche</button>
+          <button data-tool="door" class="tool">Tor</button>
+          <button data-tool="sluice" class="tool">Schleuse</button>
           <button id="btn-undo">↶ Undo</button>
           <button id="btn-redo">↷ Redo</button>
           <button id="btn-clear-window">Fenster leeren</button>
         </div>
-        <p>Pinch‑Zoom, mit einem Finger ziehen. Rechtecke im Raster (10 px).</p>
-        <details>
-          <summary>Vorschläge für Öffnungen</summary>
-          <p id="door-suggestions">Noch keine Vorschläge. Nach der Automatik erscheinen hier mögliche Tore/Öffnungen zur Bestätigung.</p>
-        </details>
+        <p>Interaktiv: Objekt wählen und einzeichnen. Vorschläge werden farbig überlagert und können direkt am Objekt (X) entfernt werden.</p>
       </section>
 
       <section id="panel-step-4" class="panel-section">
@@ -133,10 +126,15 @@
       </section>
 
       <section id="panel-step-6" class="panel-section">
-        <h2>6 · Qualität & Export</h2>
+        <h2>6 · Qualität, Versionen & Export</h2>
         <div class="field">
           <button id="btn-run-quality">Qualitätscheck</button>
           <div id="quality-report" class="report"></div>
+        </div>
+        <div class="field inline">
+          <button id="btn-save-snap">Snapshot speichern</button>
+          <button id="btn-load-last">Letzten laden</button>
+          <button id="btn-list-snaps">Snapshots…</button>
         </div>
         <div class="field">
           <label><input type="checkbox" id="chk-embed-image" checked> Bild im Export einbetten</label>

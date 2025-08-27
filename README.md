@@ -1,7 +1,11 @@
-# Werksplan‑Editor PRO (PWA) v3
+# Werksplan‑Editor PRO (PWA) v3C – Option C integriert
 
-**Wesentliche Änderung (Ihr Wunsch):** Der Button *„Bild auswählen / Kamera“* nutzt `<input type="file" accept="image/*">` **ohne** `capture`. Dadurch zeigt das **OS‑Sheet** auf Mobilgeräten **beide Optionen** (Foto aufnehmen **oder** Bild aus Dateien/Mediathek). Ein Button, keine doppelte UI.
+**Neu in v3C (Option C):**
+- **Türen 2.0** – Narrow‑Pass mit Skeleton‑Filter (Zhang‑Suen) auf dem 10‑px‑Raster, robust gegen Artefakte.
+- **Interaktive Vorschläge** – farbig (Cyan) als Objekte über der Karte; direkt am Objekt per **X** entfernbar.
+- **Editor erweitert** – Tools: **Halle**, **Wand**, **Sperrfläche**, **Tor**, **Schleuse**.
+- **Farben:** Sperrflächen **gelb**, Wände **schwarz**, Schleusen **grün**.
+- **Snapshots (IndexedDB)** – lokal versionieren, laden, löschen (offline, kein Server).
+- **Ein Button** für **Foto oder Upload** (OS‑Sheet).
 
-**Pro‑Upgrades:** Pipeline‑Timings, ΔE‑Toleranz, Zell‑Schwellwert, Pinch‑Zoom, A*‑Pfadmetriken im Qualitätscheck, robuste Fehler‑Overlays, PWA offline.
-
-**Deployment:** wie gehabt (Root, GitHub Pages). Nach dem ersten Aufruf einmal neu laden → offline.
+**Deployment:** Root auf GitHub Pages, beim ersten Öffnen einmal neu laden → offline.
