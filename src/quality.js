@@ -1,12 +1,13 @@
 export const Quality = {
   check(state){
     const alerts = [];
+    const add = (level, text)=>{ alerts.push({level, text}); };
     // Kalibrierung
     if (!state.calibration.px_per_meter || state.calibration.px_per_meter<=0){
-      alerts.push({level:'warn', text:'Keine Kalibrierung gesetzt (px/m).'});
+      add('warn','Keine Kalibrierung gesetzt (px/m).');
     }
     // Standorte
-    if (!state.sites?.length){ alerts.push({level:'warn', text:'Keine Standorte gesetzt.'}); }
+    if (!state.sites?.length){ add('warn','Keine Standorte gesetzt.'); }
     // Erreichbarkeit
     const report = [];
     if (state.grid){
@@ -14,34 +15,31 @@ export const Quality = {
       const blocked = state.grid.walls;
       const inside = (c,r)=> c>=0&&r>=0&&c<cols&&r<rows;
       const walkable = (c,r)=> inside(c,r) && !blocked.has(`${c}_${r}`);
-      const flood = (start)=>{
+      const flood = (startC, startR)=>{
         const seen = new Set();
-        const q = [start]; seen.add(start);
+        const q = [];
+        const key = (c,r)=>`${c}_${r}`;
+        const push=(c,r)=>{ const k=key(c,r); if (!walkable(c,r) || seen.has(k)) return; seen.add(k); q.push([c,r]); };
+        push(startC,startR);
         while(q.length){
           const [c,r] = q.shift();
-          [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dc,dr])=>{
-            const nc=c+dc, nr=r+dr, k=`${nc}_${nr}`;
-            if (walkable(nc,nr) && !seen.has(k)){ seen.add(k); q.push([nc,nr]); }
-          });
+          push(c+1,r); push(c-1,r); push(c,r+1); push(c,r-1);
         }
         return seen;
       };
-      // Pick a seed: first non-blocked cell
+      // Seed: first walkable
       let seed=null;
       outer: for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
-        if (walkable(c,r)){ seed=`${c}_${r}`; break outer; }
+        if (walkable(c,r)){ seed={c,r}; break outer; }
       }
       let reach = new Set();
-      if (seed){
-        const [sc,sr] = seed.split('_').map(Number);
-        reach = flood([sc,sr]);
-      }
+      if (seed){ reach = flood(seed.c, seed.r); }
       const unreachableSites = (state.sites||[]).filter(s => {
         const c = Math.floor(s.x/cell), r=Math.floor(s.y/cell);
         return !reach.has(`${c}_${r}`);
       });
       if (unreachableSites.length){
-        alerts.push({level:'danger', text:`${unreachableSites.length} Standort(e) unzugänglich.`});
+        add('danger', `${unreachableSites.length} Standort(e) unzugänglich: ${unreachableSites.map(s=>`#${s.id} ${s.name}`).join(', ')}`);
         report.push(`<li><strong>Unzugängliche Standorte:</strong> ${unreachableSites.map(s=>`#${s.id} ${s.name}`).join(', ')}</li>`);
       }
       // Abdeckung
@@ -49,10 +47,10 @@ export const Quality = {
       const blockedCount = blocked.size;
       const ratio = blockedCount/total;
       if (ratio>0.85 || ratio<0.05){
-        alerts.push({level:'warn', text:'Auffällige Abdeckung (zu hoch/zu niedrig) – bitte Plausibilität prüfen.'});
+        add('warn','Auffällige Abdeckung (zu hoch/zu niedrig) – bitte Plausibilität prüfen.');
       }
       report.push(`<li>Abdeckung (blockiert): ${(ratio*100).toFixed(1)}%</li>`);
-      // Kürzeste-Wege-Lücken
+      // Kürzeste-Wege-Lücken (vereinfachte Erreichbarkeit Start->Site)
       const starts = state.startPoints||[];
       if (starts.length && state.sites.length){
         const gaps = [];
@@ -64,10 +62,10 @@ export const Quality = {
             if (!walkable(tc,tr) || !reach.has(`${tc}_${tr}`)){ gaps.push(`${sp.name} ⇄ #${site.id} ${site.name}`); }
           }
         }
-        if (gaps.length){ alerts.push({level:'warn', text:`Kürzeste‑Wege‑Lücken: ${gaps.length}`}); report.push(`<li>Fehlende Verbindungen: ${gaps.join('; ')}</li>`); }
+        if (gaps.length){ add('warn',`Kürzeste‑Wege‑Lücken: ${gaps.length}`); report.push(`<li>Fehlende Verbindungen: ${gaps.join('; ')}</li>`); }
       }
     }
     const html = `<ul>${report.join('')}</ul>`;
-    return {alerts: alerts.map(a=>a.text), html};
+    return {alerts, html};
   }
 };

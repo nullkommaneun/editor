@@ -42,9 +42,9 @@ export function kmeans(imageData, k=6, maxIter=12){
       centroids[c][2]=sum[c][2]/cnt[c];
     }
   }
-  // Map clusters für jeden Pixel (subsampled)
-  const clusterColors = centroids.map(labToRgbApprox);
-  return {centroids, clusterColors, assign, points, step};
+  // Palette-Farben aus Centroids
+  const clusterColors = centroids.map(([L,a,b]) => labToRgbApprox(L,a,b));
+  return {centroids, clusterColors};
 }
 
 export function labelImageByCentroids(imageData, centroids){
@@ -66,28 +66,20 @@ export function labelImageByCentroids(imageData, centroids){
 
 function dist(a,b){ const d0=a[0]-b[0], d1=a[1]-b[1], d2=a[2]-b[2]; return d0*d0+d1*d1+d2*d2; }
 
-// schnelles Lab->RGB approximiert für Palette (nicht exakt)
-function labToRgbApprox(l,a,b){
-  // inverse von rgbToLab grob – hier für Anzeige ausreichend
-  // nutzen Standard‑Formeln (D65)
-  const y = (l + 16) / 116;
-  const x = a / 500 + y;
-  const z = y - b / 200;
-  const xyz = [x, y, z].map(v => {
-    const v3 = v*v*v;
-    return v3 > 0.008856 ? v3 : (v - 16/116) / 7.787;
-  });
-  const X = xyz[0] * 95.047;
-  const Y = xyz[1] * 100.000;
-  const Z = xyz[2] * 108.883;
+// Lab->RGB approximiert für Palette (nicht farbmetrisch exakt, aber stabil)
+function labToRgbApprox(L,a,b){
+  // XYZ referenzweiß D65
+  const fy = (L + 16) / 116;
+  const fx = a / 500 + fy;
+  const fz = fy - b / 200;
+  const xr = fx**3 > 0.008856 ? fx**3 : (fx - 16/116)/7.787;
+  const yr = fy**3 > 0.008856 ? fy**3 : (fy - 16/116)/7.787;
+  const zr = fz**3 > 0.008856 ? fz**3 : (fz - 16/116)/7.787;
+  const X = xr * 95.047, Y = yr * 100.0, Z = zr * 108.883;
   let R = X* 0.032406 + Y*(-0.015372) + Z*(-0.004986);
   let G = X*(-0.009689) + Y* 0.018758 + Z* 0.000415;
   let B = X* 0.000557 + Y*(-0.002040) + Z* 0.010570;
-  // convert to sRGB
-  const toSRGB = (u)=>{
-    u = u/100;
-    return u<=0.0031308 ? 12.92*u : 1.055*(u**(1/2.4)) - 0.055;
-  };
+  const toSRGB = (u)=>{ u/=100; return u<=0.0031308 ? 12.92*u : 1.055*(u**(1/2.4)) - 0.055; };
   R = Math.max(0, Math.min(255, Math.round(toSRGB(R)*255)));
   G = Math.max(0, Math.min(255, Math.round(toSRGB(G)*255)));
   B = Math.max(0, Math.min(255, Math.round(toSRGB(B)*255)));

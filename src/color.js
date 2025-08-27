@@ -7,13 +7,12 @@ export function rgbToLab(r,g,b){
   const Y = (R*0.2126729 + G*0.7151522 + B*0.0721750) * 100;
   const Z = (R*0.0193339 + G*0.1191920 + B*0.9503041) * 100;
   // XYZ -> Lab
-  const ref=[95.047,100.000,108.883];
-  const f=(t)=>{ const v=t/ref.shift(); return v>0.008856? Math.cbrt(v) : (7.787*v + 16/116); };
-  const fx = ((X/95.047)>0.008856) ? Math.cbrt(X/95.047) : (7.787*(X/95.047) + 16/116);
-  const fy = ((Y/100.000)>0.008856) ? Math.cbrt(Y/100.000) : (7.787*(Y/100.000) + 16/116);
-  const fz = ((Z/108.883)>0.008856) ? Math.cbrt(Z/108.883) : (7.787*(Z/108.883) + 16/116);
+  const xr = X/95.047, yr = Y/100.000, zr = Z/108.883;
+  const fx = xr > 0.008856 ? Math.cbrt(xr) : (7.787*xr + 16/116);
+  const fy = yr > 0.008856 ? Math.cbrt(yr) : (7.787*yr + 16/116);
+  const fz = zr > 0.008856 ? Math.cbrt(zr) : (7.787*zr + 16/116);
   const L = (116*fy) - 16;
   const a = 500*(fx - fy);
-  const b = 200*(fy - fz);
-  return [L, a, b];
+  const b2 = 200*(fy - fz);
+  return [L, a, b2];
 }

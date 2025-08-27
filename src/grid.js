@@ -35,7 +35,7 @@ export class Grid{
   removeWalls(keys){ keys.forEach(k=>this.walls.delete(k)); }
   addZones(keys){ keys.forEach(k=>this.zones.add(k)); }
   removeZones(keys){ keys.forEach(k=>this.zones.delete(k)); }
-  draw(ctx){
+  draw(ctx, zoom=1){
     const cs = this.cell;
     ctx.save();
     ctx.globalAlpha = 0.45;

@@ -7,7 +7,7 @@ self.onmessage = async (e)=>{
       const res = await runPipeline(payload.imageData, payload);
       postMessage(res);
     } else {
-      throw new Error('Unbekannte Worker-Funktion: ' + fn);
+      postMessage({error: 'Unbekannte Worker-Funktion: ' + fn});
     }
   } catch (err){
     postMessage({error: err.message || String(err)});

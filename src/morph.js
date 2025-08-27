@@ -5,11 +5,19 @@ export function thresholdImageFloat(gray, width, height, thr){
   return {mask, width, height};
 }
 
-export function maskFromClusters(idxMap, width, height, selectedIndices=[], tolerance=10){
-  // Ohne echte Toleranz für Lab-Distanz – hier: direkte Indizes
+export function maskFromClustersIdxMap(idxMap, width, height, selectedIndices=[], centroids=null, toleranceDE=0){
   const mask = new Uint8Array(width*height);
-  const set = new Set(selectedIndices);
-  for (let i=0;i<idxMap.length;i++){ mask[i] = set.has(idxMap[i]) ? 1 : 0; }
+  if (!selectedIndices.length){ return {mask, width, height}; }
+  // Wenn Toleranz > 0: erweitere Auswahl um Centroids mit ΔE <= toleranceDE
+  let allowed = new Set(selectedIndices);
+  if (centroids && toleranceDE>0){
+    const dE = (a,b)=> Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+    const targets = selectedIndices.map(i=>centroids[i]);
+    centroids.forEach((c,idx)=>{
+      for (const t of targets){ if (dE(c,t) <= toleranceDE){ allowed.add(idx); break; } }
+    });
+  }
+  for (let i=0;i<idxMap.length;i++){ mask[i] = allowed.has(idxMap[i]) ? 1 : 0; }
   return {mask, width, height};
 }
 

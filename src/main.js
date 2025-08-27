@@ -8,10 +8,14 @@ import { Quality } from './quality.js';
 const state = new AppState();
 const ui = new UI(state);
 
+// Global Fehlerfänger → sichtbare Alerts
+window.addEventListener('error', (e) => ui.alert('Fehler: ' + (e.message||e.error), 'danger'));
+window.addEventListener('unhandledrejection', (e) => ui.alert('Unhandled: ' + (e.reason?.message||e.reason), 'danger'));
+
 let installPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault(); installPrompt = e;
-  document.querySelector('#btn-install')?.removeAttribute('hidden');
+  const el = document.querySelector('#btn-install'); if (el) el.hidden = false;
 });
 
 document.querySelector('#btn-install')?.addEventListener('click', async () => {
@@ -22,7 +26,7 @@ document.querySelector('#btn-install')?.addEventListener('click', async () => {
 // Service Worker registrieren
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(console.error);
+    navigator.serviceWorker.register('./sw.js').catch(err => ui.alert('SW Fehler: '+err.message, 'danger'));
   });
 }
 
@@ -49,14 +53,19 @@ kval?.addEventListener('input', (e)=> kvalLabel.textContent = e.target.value);
 const tol = document.getElementById('tol');
 const tolLabel = document.getElementById('tol-label');
 tol?.addEventListener('input', (e)=> tolLabel.textContent = e.target.value);
+const occ = document.getElementById('occ');
+const occLabel = document.getElementById('occ-label');
+occ?.addEventListener('input', (e)=> occLabel.textContent = e.target.value + '%');
 
-// Cluster-Klick
+// Cluster-Klick (Multi-Select)
 document.getElementById('cluster-palette')?.addEventListener('click', (e) => {
   const sw = e.target.closest('.swatch');
   if (!sw) return;
   const idx = parseInt(sw.dataset.idx, 10);
-  state.pipeline.selectedClusters = [idx];
-  ui.highlightSwatch(idx);
+  const sel = new Set(state.pipeline.selectedClusters);
+  if (sel.has(idx)) sel.delete(idx); else sel.add(idx);
+  state.pipeline.selectedClusters = Array.from(sel);
+  document.querySelectorAll('#cluster-palette .swatch').forEach(el => el.classList.toggle('selected', state.pipeline.selectedClusters.includes(parseInt(el.dataset.idx,10))));
 });
 
 // Run pipeline
@@ -64,6 +73,7 @@ document.getElementById('btn-run-pipeline')?.addEventListener('click', async () 
   if (!state.imageData) { ui.toast('Bitte zuerst ein Bild laden.'); return; }
   const k = parseInt(kval.value, 10);
   const tolerance = parseInt(tol.value, 10);
+  const occupancy = parseInt(occ.value, 10) / 100;
   state.pipeline.k = k; state.pipeline.tolerance = tolerance;
   const useWorker = document.getElementById('chk-worker')?.checked;
   ui.setBusy(true, 'Erkenne Hallen & Sperrzonen…');
@@ -74,11 +84,11 @@ document.getElementById('btn-run-pipeline')?.addEventListener('click', async () 
     } else {
       result = await runPipeline(state.imageData, {k, tolerance, selectedClusters: state.pipeline.selectedClusters});
     }
-    const { mask, clusterColors, clusterIndexMap } = result;
+    const { mask, clusterColors, centroids } = result;
     state.pipeline.clusterColors = clusterColors;
-    state.pipeline.clusterIndexMap = clusterIndexMap;
-    ui.showClusterPalette(clusterColors);
-    state.grid = Grid.fromMask(mask, 10 /* cell size */, 0.4 /* occupancy */);
+    state.pipeline.centroids = centroids;
+    ui.showClusterPalette(clusterColors, state.pipeline.selectedClusters);
+    state.grid = Grid.fromMask(mask, 10 /* cell size */, occupancy /* occupancy */);
     ui.drawAll();
     ui.enableStep(3);
     // Türvorschläge
@@ -87,7 +97,7 @@ document.getElementById('btn-run-pipeline')?.addEventListener('click', async () 
     ui.listDoorSuggestions(state.doors);
   } catch (err) {
     console.error(err);
-    ui.toast('Automatik fehlgeschlagen: ' + err.message);
+    ui.alert('Automatik fehlgeschlagen: ' + (err.message||err), 'danger');
   } finally {
     ui.setBusy(false);
   }
@@ -112,7 +122,7 @@ document.getElementById('btn-add-start')?.addEventListener('click', () => ui.add
 document.getElementById('btn-run-quality')?.addEventListener('click', () => {
   const report = Quality.check(state);
   document.getElementById('quality-report').innerHTML = report.html;
-  report.alerts.forEach(a => ui.alert(a, a.level));
+  report.alerts.forEach(a => ui.alert(a.text, a.level));
 });
 document.getElementById('btn-export')?.addEventListener('click', () => {
   const exp = new Exporter(state);
@@ -132,7 +142,7 @@ document.getElementById('import-input')?.addEventListener('change', async (e) =>
     await ui.importBundle(obj);
     ui.toast('Bundle importiert.');
   } catch (err) {
-    ui.toast('Import fehlgeschlagen: ' + err.message);
+    ui.alert('Import fehlgeschlagen: ' + (err.message||err), 'danger');
   }
 });
 

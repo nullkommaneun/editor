@@ -24,7 +24,6 @@ export function sobel(imageData){
 
 // Otsu Schwelle auf Float32Array
 export function otsuThreshold(gray, width, height){
-  // Normalize to [0,255]
   let min=Infinity, max=-Infinity;
   for (let i=0;i<gray.length;i++){ const v=gray[i]; if (v<min) min=v; if (v>max) max=v; }
   const hist = new Uint32Array(256);
@@ -32,10 +31,10 @@ export function otsuThreshold(gray, width, height){
   for (let i=0;i<gray.length;i++){ const v = Math.max(0, Math.min(255, Math.round((gray[i]-min)*scale))); hist[v]++; }
   const total = gray.length;
   let sum=0; for (let t=0;t<256;t++) sum+=t*hist[t];
-  let sumB=0, wB=0, wF=0, varMax=0, thresh=0;
+  let sumB=0, wB=0, varMax=0, thresh=0;
   for (let t=0;t<256;t++){
     wB += hist[t]; if (wB===0) continue;
-    wF = total - wB; if (wF===0) break;
+    const wF = total - wB; if (wF===0) break;
     sumB += t*hist[t];
     const mB = sumB/wB;
     const mF = (sum - sumB)/wF;

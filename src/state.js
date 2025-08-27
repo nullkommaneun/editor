@@ -2,7 +2,7 @@ export class AppState{
   constructor(){
     this.image = null;
     this.imageData = null;
-    this.pipeline = { k:6, tolerance:10, selectedClusters:[], clusterColors:[], clusterIndexMap:null };
+    this.pipeline = { k:6, tolerance:10, selectedClusters:[], clusterColors:[], centroids:null };
     this.grid = null;
     this.doors = [];
     this.sluices = [];
