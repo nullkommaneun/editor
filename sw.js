@@ -1,5 +1,5 @@
-// Minimaler Offline‑First Service Worker
-const VERSION = '2025-08-27-v1';
+// Offline‑First Service Worker (verbessert)
+const VERSION = '2025-08-27-v2';
 const CACHE = 'werksplan-cache-' + VERSION;
 const ASSETS = [
   './',
@@ -39,7 +39,8 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  // Navigation requests: App‑Shell
+  if (req.method !== 'GET') return;
+  // App‑Shell für Navigation
   if (req.mode === 'navigate') {
     e.respondWith((async()=>{
       const cache = await caches.open(CACHE);
@@ -54,14 +55,14 @@ self.addEventListener('fetch', (e) => {
     })());
     return;
   }
-  // Static assets: Cache‑First
+  // Cache‑First für statische Assets
   e.respondWith((async()=>{
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req);
     if (cached) return cached;
     try {
       const fresh = await fetch(req);
-      if (fresh.ok && (req.url.startsWith(self.location.origin))) {
+      if (fresh.ok && (new URL(req.url).origin === location.origin)) {
         cache.put(req, fresh.clone());
       }
       return fresh;

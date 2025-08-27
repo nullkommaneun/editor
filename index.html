@@ -39,8 +39,8 @@
         <p>Planskizze hochladen (PNG/JPG/SVG). Optional drehen.</p>
         <div class="field">
           <label class="button button-primary">
-            <input type="file" id="file-input" accept="image/*" hidden>
-            Bild auswählen
+            <input type="file" id="file-input" accept="image/*" capture="environment" hidden>
+            Bild auswählen / Kamera
           </label>
         </div>
         <div class="field inline">
@@ -67,9 +67,14 @@
           <span id="kval-label">6</span>
         </div>
         <div class="field inline">
-          <label for="tol">Toleranz</label>
-          <input type="range" min="0" max="30" value="10" id="tol">
+          <label for="tol">ΔE‑Toleranz</label>
+          <input type="range" min="0" max="35" value="10" id="tol">
           <span id="tol-label">10</span>
+        </div>
+        <div class="field inline">
+          <label for="occ">Zellschwelle</label>
+          <input type="range" min="10" max="90" value="40" id="occ">
+          <span id="occ-label">40%</span>
         </div>
         <div class="field">
           <div id="cluster-palette" class="palette" title="Hallen‑Cluster auswählen (graue Flächen)"></div>
@@ -79,14 +84,14 @@
         </div>
         <details>
           <summary>Ehrliche Einschätzung Auto‑Erkennung</summary>
-          <p>Die Pipeline (k‑means in Lab, Sobel + Otsu, Morphologie) liefert in der Praxis eine brauchbare Erstmaske für typische Werkspläne (graue Hallen, hellere Wege). Grenzen: Druckartefakte, Schatten, stark komprimierte Scans → Fehler an Rändern. Deshalb folgt Halbautomat: Sie passen mit drei Werkzeugen an.</p>
+          <p>Die Pipeline (k‑means in Lab, Sobel + Otsu, Morphologie) liefert in der Praxis eine brauchbare Erstmaske. Grenzen: Druckartefakte, Schatten, komprimierte Scans → Randfehler. Halbautomat korrigiert mit 3 Werkzeugen.</p>
         </details>
       </section>
 
       <section id="panel-step-3" class="panel-section">
         <h2>3 · Nacharbeit</h2>
         <div class="toolbar">
-          <button data-tool="hand" class="tool active">Hand</button>
+          <button data-tool="hand" class="tool active">Hand/Zoom</button>
           <button data-tool="wall" class="tool">Wand</button>
           <button data-tool="zone" class="tool">Sperrzone</button>
           <button data-tool="door" class="tool">Öffnung</button>
@@ -94,7 +99,7 @@
           <button id="btn-redo">↷ Redo</button>
           <button id="btn-clear-window">Fenster leeren</button>
         </div>
-        <p>Rechteck‑Werkzeuge ziehen – Snap‑to‑Grid (10 px).</p>
+        <p>Pinch‑Zoom, mit einem Finger ziehen. Rechtecke im Raster (10 px).</p>
         <details>
           <summary>Vorschläge für Öffnungen</summary>
           <p id="door-suggestions">Noch keine Vorschläge. Nach der Automatik erscheinen hier mögliche Tore/Öffnungen zur Bestätigung.</p>
