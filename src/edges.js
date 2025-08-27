@@ -1,4 +1,3 @@
-// Sobel-Kanten
 export function sobel(imageData){
   const {data, width, height} = imageData;
   const out = new Float32Array(width*height);
@@ -6,7 +5,6 @@ export function sobel(imageData){
     x = Math.max(0, Math.min(width-1, x));
     y = Math.max(0, Math.min(height-1, y));
     const i=(y*width+x)*4;
-    // Luminanz
     const r=data[i], g=data[i+1], b=data[i+2];
     return 0.2126*r + 0.7152*g + 0.0722*b;
   };
@@ -22,7 +20,6 @@ export function sobel(imageData){
   return out;
 }
 
-// Otsu Schwelle auf Float32Array
 export function otsuThreshold(gray, width, height){
   let min=Infinity, max=-Infinity;
   for (let i=0;i<gray.length;i++){ const v=gray[i]; if (v<min) min=v; if (v>max) max=v; }

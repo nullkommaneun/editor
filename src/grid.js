@@ -13,14 +13,8 @@ export class Grid{
       for (let c=0;c<cols;c++){
         const x0=c*cell, y0=r*cell, x1=Math.min(x0+cell, width), y1=Math.min(y0+cell, height);
         let count=0, total=(x1-x0)*(y1-y0);
-        for (let y=y0;y<y1;y++){
-          for (let x=x0;x<x1;x++){
-            if (mask[y*width+x]) count++;
-          }
-        }
-        if (count/total >= occupancy){
-          g.walls.add(`${c}_${r}`);
-        }
+        for (let y=y0;y<y1;y++){ for (let x=x0;x<x1;x++){ if (mask[y*width+x]) count++; } }
+        if (count/total >= occupancy){ g.walls.add(`${c}_${r}`); }
       }
     }
     return g;
@@ -36,27 +30,12 @@ export class Grid{
   addZones(keys){ keys.forEach(k=>this.zones.add(k)); }
   removeZones(keys){ keys.forEach(k=>this.zones.delete(k)); }
   draw(ctx, zoom=1){
-    const cs = this.cell;
-    ctx.save();
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = 'rgba(80,120,120,0.8)';
-    for (const k of this.walls){
-      const [c,r] = k.split('_').map(Number);
-      ctx.fillRect(c*cs, r*cs, cs, cs);
-    }
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = 'rgba(255,80,80,0.7)';
-    for (const k of this.zones){
-      const [c,r] = k.split('_').map(Number);
-      ctx.fillRect(c*cs, r*cs, cs, cs);
-    }
+    const cs = this.cell; ctx.save();
+    ctx.globalAlpha = 0.45; ctx.fillStyle = 'rgba(80,120,120,0.8)';
+    for (const k of this.walls){ const [c,r]=k.split('_').map(Number); ctx.fillRect(c*cs, r*cs, cs, cs); }
+    ctx.globalAlpha = 0.35; ctx.fillStyle = 'rgba(255,80,80,0.7)';
+    for (const k of this.zones){ const [c,r]=k.split('_').map(Number); ctx.fillRect(c*cs, r*cs, cs, cs); }
     ctx.restore();
   }
-  toBundle(){
-    return {
-      cell: this.cell, cols: this.cols, rows: this.rows,
-      walls_cells: Array.from(this.walls),
-      zones_cells: Array.from(this.zones),
-    };
-  }
+  toBundle(){ return { cell: this.cell, cols: this.cols, rows: this.rows, walls_cells: Array.from(this.walls), zones_cells: Array.from(this.zones) }; }
 }

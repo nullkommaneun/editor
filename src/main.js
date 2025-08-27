@@ -8,7 +8,6 @@ import { Quality } from './quality.js';
 const state = new AppState();
 const ui = new UI(state);
 
-// Global Fehlerfänger → sichtbare Alerts
 window.addEventListener('error', (e) => ui.alert('Fehler: ' + (e.message||e.error), 'danger'));
 window.addEventListener('unhandledrejection', (e) => ui.alert('Unhandled: ' + (e.reason?.message||e.reason), 'danger'));
 
@@ -23,19 +22,17 @@ document.querySelector('#btn-install')?.addEventListener('click', async () => {
   await installPrompt.prompt();
 });
 
-// Service Worker registrieren
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => ui.alert('SW Fehler: '+err.message, 'danger'));
   });
 }
 
-// Steps
 document.querySelectorAll('.step').forEach(btn => {
   btn.addEventListener('click', () => ui.showStep(parseInt(btn.dataset.step, 10)));
 });
 
-// Step 1: Bild laden + Drehen
+// Upload / Kamera: ein Button – OS‑Sheet entscheidet
 const fileInput = document.getElementById('file-input');
 fileInput?.addEventListener('change', async (e) => {
   const f = e.target.files?.[0];
@@ -44,9 +41,9 @@ fileInput?.addEventListener('change', async (e) => {
   ui.toast('Bild geladen.');
   ui.enableStep(2);
 });
+
 document.getElementById('btn-apply-rotation')?.addEventListener('click', () => ui.applyRotation());
 
-// Pipeline Parameter
 const kval = document.getElementById('kval');
 const kvalLabel = document.getElementById('kval-label');
 kval?.addEventListener('input', (e)=> kvalLabel.textContent = e.target.value);
@@ -57,7 +54,6 @@ const occ = document.getElementById('occ');
 const occLabel = document.getElementById('occ-label');
 occ?.addEventListener('input', (e)=> occLabel.textContent = e.target.value + '%');
 
-// Cluster-Klick (Multi-Select)
 document.getElementById('cluster-palette')?.addEventListener('click', (e) => {
   const sw = e.target.closest('.swatch');
   if (!sw) return;
@@ -68,7 +64,6 @@ document.getElementById('cluster-palette')?.addEventListener('click', (e) => {
   document.querySelectorAll('#cluster-palette .swatch').forEach(el => el.classList.toggle('selected', state.pipeline.selectedClusters.includes(parseInt(el.dataset.idx,10))));
 });
 
-// Run pipeline
 document.getElementById('btn-run-pipeline')?.addEventListener('click', async () => {
   if (!state.imageData) { ui.toast('Bitte zuerst ein Bild laden.'); return; }
   const k = parseInt(kval.value, 10);
@@ -78,23 +73,27 @@ document.getElementById('btn-run-pipeline')?.addEventListener('click', async () 
   const useWorker = document.getElementById('chk-worker')?.checked;
   ui.setBusy(true, 'Erkenne Hallen & Sperrzonen…');
   try {
+    let t0 = performance.now();
     let result;
     if (useWorker && window.Worker) {
       result = await ui.runInWorker('pipeline', {imageData: state.imageData, k, tolerance, selectedClusters: state.pipeline.selectedClusters});
     } else {
       result = await runPipeline(state.imageData, {k, tolerance, selectedClusters: state.pipeline.selectedClusters});
     }
-    const { mask, clusterColors, centroids } = result;
+    const t1 = performance.now();
+    const { mask, clusterColors, centroids, timings } = result;
     state.pipeline.clusterColors = clusterColors;
     state.pipeline.centroids = centroids;
     ui.showClusterPalette(clusterColors, state.pipeline.selectedClusters);
-    state.grid = Grid.fromMask(mask, 10 /* cell size */, occupancy /* occupancy */);
+    state.grid = Grid.fromMask(mask, 10, occupancy);
     ui.drawAll();
     ui.enableStep(3);
-    // Türvorschläge
     const doors = suggestDoors(mask, 10);
     state.doors = doors.map(d => ({...d, name: 'Tor', type:'gate'}));
     ui.listDoorSuggestions(state.doors);
+    // Perf report
+    const perf = Object.assign({total_ms: (t1 - t0).toFixed(1)}, timings||{});
+    ui.showPerf(perf);
   } catch (err) {
     console.error(err);
     ui.alert('Automatik fehlgeschlagen: ' + (err.message||err), 'danger');
@@ -103,7 +102,6 @@ document.getElementById('btn-run-pipeline')?.addEventListener('click', async () 
   }
 });
 
-// Tools
 document.querySelectorAll('.toolbar .tool').forEach(btn => {
   btn.addEventListener('click', () => ui.setTool(btn.dataset.tool));
 });
@@ -111,16 +109,13 @@ document.getElementById('btn-undo')?.addEventListener('click', () => ui.undo());
 document.getElementById('btn-redo')?.addEventListener('click', () => ui.redo());
 document.getElementById('btn-clear-window')?.addEventListener('click', () => ui.clearWindowTool());
 
-// Kalibrieren
 document.getElementById('btn-calibrate')?.addEventListener('click', () => ui.calibrate());
 
-// Standorte & Startpunkte
 document.getElementById('btn-add-site')?.addEventListener('click', () => ui.addSite());
 document.getElementById('btn-add-start')?.addEventListener('click', () => ui.addStart());
 
-// Qualitätscheck + Export/Import
 document.getElementById('btn-run-quality')?.addEventListener('click', () => {
-  const report = Quality.check(state);
+  const report = Quality.check(state, {pathMetrics:true});
   document.getElementById('quality-report').innerHTML = report.html;
   report.alerts.forEach(a => ui.alert(a.text, a.level));
 });
@@ -146,9 +141,7 @@ document.getElementById('import-input')?.addEventListener('change', async (e) =>
   }
 });
 
-// Preflight
 document.getElementById('btn-preflight')?.addEventListener('click', () => ui.preflight());
 if (new URLSearchParams(location.search).get('pf') === '1') { ui.preflight(); }
 
-// Initial
 ui.updateStatus('Bereit. Laden Sie eine Planskizze.');
