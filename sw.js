@@ -1,5 +1,5 @@
-// Offline‑First Service Worker (verbessert)
-const VERSION = '2025-08-27-v2';
+// Offline‑First Service Worker (v3)
+const VERSION = '2025-08-27-v3';
 const CACHE = 'werksplan-cache-' + VERSION;
 const ASSETS = [
   './',
@@ -40,7 +40,6 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  // App‑Shell für Navigation
   if (req.mode === 'navigate') {
     e.respondWith((async()=>{
       const cache = await caches.open(CACHE);
@@ -55,7 +54,6 @@ self.addEventListener('fetch', (e) => {
     })());
     return;
   }
-  // Cache‑First für statische Assets
   e.respondWith((async()=>{
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req);

@@ -36,10 +36,11 @@
     <aside class="panel" id="panel">
       <section id="panel-step-1" class="panel-section visible">
         <h2>1 · Bild laden</h2>
-        <p>Planskizze hochladen (PNG/JPG/SVG). Optional drehen.</p>
+        <p>Planskizze hochladen (PNG/JPG/SVG) oder direkt fotografieren. Ein Button, beide Optionen (OS‑Sheet).</p>
         <div class="field">
           <label class="button button-primary">
-            <input type="file" id="file-input" accept="image/*" capture="environment" hidden>
+            <!-- WICHTIG: kein capture‑Attribut, damit OS die Wahl (Kamera oder Dateien) anbietet -->
+            <input type="file" id="file-input" accept="image/*" hidden>
             Bild auswählen / Kamera
           </label>
         </div>
@@ -82,6 +83,10 @@
         <div class="field">
           <button id="btn-run-pipeline" class="button-primary">Erstmaske erzeugen</button>
         </div>
+        <details class="perf">
+          <summary>Pipeline‑Timings</summary>
+          <pre id="perf-report">–</pre>
+        </details>
         <details>
           <summary>Ehrliche Einschätzung Auto‑Erkennung</summary>
           <p>Die Pipeline (k‑means in Lab, Sobel + Otsu, Morphologie) liefert in der Praxis eine brauchbare Erstmaske. Grenzen: Druckartefakte, Schatten, komprimierte Scans → Randfehler. Halbautomat korrigiert mit 3 Werkzeugen.</p>
@@ -153,6 +158,7 @@
     <section class="canvas-wrap">
       <canvas id="plan-canvas" width="1200" height="800"></canvas>
       <canvas id="overlay-canvas" width="1200" height="800"></canvas>
+      <div class="spinner" hidden><div class="dot"></div></div>
       <div id="alerts" class="alerts"></div>
     </section>
   </main>
