@@ -31,9 +31,11 @@ export class Grid{
   removeZones(keys){ keys.forEach(k=>this.zones.delete(k)); }
   draw(ctx, zoom=1){
     const cs = this.cell; ctx.save();
-    ctx.globalAlpha = 0.45; ctx.fillStyle = 'rgba(80,120,120,0.8)';
+    // Wände/Hallen schwarz
+    ctx.globalAlpha = 0.55; ctx.fillStyle = 'rgba(0,0,0,0.9)';
     for (const k of this.walls){ const [c,r]=k.split('_').map(Number); ctx.fillRect(c*cs, r*cs, cs, cs); }
-    ctx.globalAlpha = 0.35; ctx.fillStyle = 'rgba(255,80,80,0.7)';
+    // Sperrflächen gelb
+    ctx.globalAlpha = 0.45; ctx.fillStyle = 'rgba(255,212,0,0.85)';
     for (const k of this.zones){ const [c,r]=k.split('_').map(Number); ctx.fillRect(c*cs, r*cs, cs, cs); }
     ctx.restore();
   }

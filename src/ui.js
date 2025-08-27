@@ -19,11 +19,10 @@ export class UI {
 
   showPerf(perfObj){
     const pre = document.getElementById('perf-report');
-    const lines = Object.entries(perfObj||{}).map(([k,v])=>`${k}: ${typeof v==='number'?v.toFixed(1):v} ms`);
+    const lines = Object.entries(perfObj||{}).map(([k,v])=>`${k}: ${typeof v==='number'?Number(v).toFixed(1):v} ms`);
     pre.textContent = lines.join('\n') || '–';
   }
 
-  // === Coord/View ===
   _applyView(ctx){ ctx.setTransform(this.view.zoom,0,0,this.view.zoom,this.view.panX,this.view.panY); }
   _resetView(ctx){ ctx.setTransform(1,0,0,1,0,0); }
   toWorld(clientX, clientY){
@@ -43,6 +42,8 @@ export class UI {
       ev.preventDefault();
       if (ev.pointerId!=null){ activePointers.set(ev.pointerId, {x:ev.clientX, y:ev.clientY}); }
       const p = this.toWorld(ev.clientX, ev.clientY);
+      // Entfernen via "X" auf Vorschlagsobjekten (immer aktiv)
+      if (this._tryRemoveSuggestedObject(ev.clientX, ev.clientY)) return;
       if (this.state.mode === 'calibrate'){ this._addCalibPoint(p); return; }
       if (this.tool === 'hand'){ this.dragStart = {x:ev.clientX, y:ev.clientY, panX:this.view.panX, panY:this.view.panY}; return; }
       this.dragStart = p; this.windowRect = {x:p.x, y:p.y, w:0, h:0}; this._drawOverlay();
@@ -56,7 +57,7 @@ export class UI {
           const dist = Math.hypot(dx, dy);
           if (lastDist===0) lastDist = dist;
           const factor = dist / lastDist; lastDist = dist;
-          const mx = (pts[0].x+pts[1].x)/2, my=(pts[0].y+pts[1].y)/2;
+          const mx=(pts[0].x+pts[1].x)/2, my=(pts[0].y+pts[1].y)/2;
           const before = this.toWorld(mx,my);
           this.view.zoom = Math.max(0.2, Math.min(8, this.view.zoom * factor));
           const after = this.toWorld(mx,my);
@@ -83,9 +84,10 @@ export class UI {
       if (!rect || rect.w<10 || rect.h<10){ this.windowRect=null; this._drawOverlay(); return; }
       const cell = 10, cells=[];
       for (let y=rect.y; y<rect.y+rect.h; y+=cell){ for (let x=rect.x; x<rect.x+rect.w; x+=cell){ cells.push(`${Math.floor(x/cell)}_${Math.floor(y/cell)}`); } }
-      if (this.tool === 'wall'){ this.commandStack.exec({do:()=>this.state.grid.addWalls(cells), undo:()=>this.state.grid.removeWalls(cells)}); }
+      if (this.tool === 'hall' || this.tool === 'wall'){ this.commandStack.exec({do:()=>this.state.grid.addWalls(cells), undo:()=>this.state.grid.removeWalls(cells)}); }
       else if (this.tool === 'zone'){ this.commandStack.exec({do:()=>this.state.grid.addZones(cells), undo:()=>this.state.grid.removeZones(cells)}); }
-      else if (this.tool === 'door'){ const d={x:rect.x,y:rect.y,w:rect.w,h:rect.h,name:'Öffnung',type:'door'}; this.commandStack.exec({do:()=>this.state.doors.push(d), undo:()=>this.state.doors.pop()}); }
+      else if (this.tool === 'door'){ const d={x:rect.x,y:rect.y,w:rect.w,h:rect.h,name:'Tor',type:'gate'}; this.commandStack.exec({do:()=>this.state.doors.push(d), undo:()=>this.state.doors.pop()}); }
+      else if (this.tool === 'sluice'){ const s={x:rect.x,y:rect.y,w:rect.w,h:rect.h,name:'Schleuse',delay_s:8}; this.commandStack.exec({do:()=>this.state.sluices.push(s), undo:()=>this.state.sluices.pop()}); }
       this.windowRect = null; this.drawAll();
     };
     this.canvas.addEventListener('pointerdown', start);
@@ -93,6 +95,28 @@ export class UI {
     window.addEventListener('pointerup', end);
     this.canvas.addEventListener('pointercancel', end);
     this.canvas.addEventListener('wheel', (ev)=>{ ev.preventDefault(); const factor = Math.sign(ev.deltaY)>0 ? 0.9 : 1.1; const mx=ev.clientX,my=ev.clientY; const before=this.toWorld(mx,my); this.view.zoom = Math.max(0.2, Math.min(8, this.view.zoom*factor)); const after=this.toWorld(mx,my); this.view.panX += (after.x-before.x)*this.view.zoom; this.view.panY += (after.y-before.y)*this.view.zoom; this.drawAll(); }, {passive:false});
+  }
+
+  // Entfernen per "X" auf Vorschlägen (Tür/Schleuse)
+  _tryRemoveSuggestedObject(clientX, clientY){
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const sizeWorld = (18 * scaleX) / this.view.zoom; // ~18 CSS px
+    const inHandle = (obj)=>{
+      const hx0 = obj.x + obj.w - sizeWorld, hy0 = obj.y;
+      const hx1 = obj.x + obj.w, hy1 = obj.y + sizeWorld;
+      const wx = (clientX - rect.left) * scaleX, wy = (clientY - rect.top) * scaleY;
+      const tx = wx - this.view.panX, ty = wy - this.view.panY;
+      return (tx>=hx0 && tx<=hx1 && ty>=hy0 && ty<=hy1);
+    };
+    // Doors (nur Vorschläge)
+    for (let i=this.state.doors.length-1; i>=0; i--){
+      const d = this.state.doors[i];
+      if (d.suggested && inHandle(d)){ this.state.doors.splice(i,1); this.drawAll(); this.toast('Vorschlag entfernt.'); return true; }
+    }
+    // Schleusen‑Vorschläge (falls wir welche hätten) – hier optional
+    return false;
   }
 
   setBusy(b,msg=''){
@@ -128,11 +152,8 @@ export class UI {
     const img = this.state.image;
     const c = document.createElement('canvas'), ctx = c.getContext('2d');
     if (deg===90 || deg===270){ c.width = img.height; c.height = img.width; } else { c.width = img.width; c.height = img.height; }
-    ctx.translate(c.width/2, c.height/2);
-    ctx.rotate(deg*Math.PI/180);
-    ctx.drawImage(img, -img.width/2, -img.height/2);
-    this.canvas.width = c.width; this.canvas.height = c.height;
-    this.overlay.width = c.width; this.overlay.height = c.height;
+    ctx.translate(c.width/2, c.height/2); ctx.rotate(deg*Math.PI/180); ctx.drawImage(img, -img.width/2, -img.height/2);
+    this.canvas.width = c.width; this.canvas.height = c.height; this.overlay.width = c.width; this.overlay.height = c.height;
     this.ctx.drawImage(c,0,0);
     this.state.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
     this.view = {zoom:1, panX:0, panY:0};
@@ -169,10 +190,33 @@ export class UI {
       o.fillRect(this.windowRect.x, this.windowRect.y, this.windowRect.w, this.windowRect.h);
       o.strokeRect(this.windowRect.x+0.5, this.windowRect.y+0.5, this.windowRect.w, this.windowRect.h);
     }
-    // Türen / Sites
-    o.strokeStyle = 'rgba(255,255,255,0.85)';
-    o.fillStyle = 'rgba(255,255,255,0.2)';
-    (this.state.doors||[]).forEach(d => { o.fillRect(d.x, d.y, d.w, d.h); o.strokeRect(d.x+0.5, d.y+0.5, d.w, d.h); });
+    // Türen (weiß), Vorschläge (cyan)
+    (this.state.doors||[]).forEach(d => {
+      if (d.suggested){
+        o.fillStyle = 'rgba(59,215,255,0.25)';
+        o.strokeStyle = 'rgba(59,215,255,0.95)';
+      } else {
+        o.fillStyle = 'rgba(255,255,255,0.22)';
+        o.strokeStyle = 'rgba(255,255,255,0.9)';
+      }
+      o.lineWidth = 2/this.view.zoom;
+      o.fillRect(d.x, d.y, d.w, d.h);
+      o.strokeRect(d.x+0.5, d.y+0.5, d.w, d.h);
+      if (d.suggested){
+        // Close-Handle (X) oben rechts
+        const sz = 18/this.view.zoom;
+        const hx = d.x + d.w - sz, hy = d.y;
+        o.fillStyle = 'rgba(0,0,0,0.8)';
+        o.fillRect(hx, hy, sz, sz);
+        o.strokeStyle = 'rgba(255,255,255,0.9)';
+        o.beginPath(); o.moveTo(hx+3/this.view.zoom, hy+3/this.view.zoom); o.lineTo(hx+sz-3/this.view.zoom, hy+sz-3/this.view.zoom);
+        o.moveTo(hx+sz-3/this.view.zoom, hy+3/this.view.zoom); o.lineTo(hx+3/this.view.zoom, hy+sz-3/this.view.zoom); o.stroke();
+      }
+    });
+    // Schleusen (grün)
+    o.fillStyle = 'rgba(0,212,106,0.25)'; o.strokeStyle = 'rgba(0,212,106,0.95)'; o.lineWidth = 2/this.view.zoom;
+    (this.state.sluices||[]).forEach(s => { o.fillRect(s.x, s.y, s.w, s.h); o.strokeRect(s.x+0.5, s.y+0.5, s.w, s.h); });
+    // Sites & Starts
     o.fillStyle = 'rgba(0,200,255,0.8)'; o.font = `${12/this.view.zoom}px system-ui`;
     (this.state.sites||[]).forEach(s => { o.beginPath(); o.arc(s.x, s.y, 6/this.view.zoom, 0, Math.PI*2); o.fill(); o.fillText(`#${s.id} ${s.name||''}`, s.x+8/this.view.zoom, s.y-8/this.view.zoom); });
     o.fillStyle = 'rgba(255,220,0,0.9)';
@@ -214,20 +258,14 @@ export class UI {
     if (obj.image?.dataUrl){ const img=new Image(); img.src=obj.image.dataUrl; await img.decode(); this.ctx.drawImage(img,0,0); this.state.image=img; this.state.imageData=this.ctx.getImageData(0,0,w,h); }
     this.state.calibration.px_per_meter = obj.calibration?.px_per_meter || 0;
     this.state.grid = Grid.fromBundle(obj.grid, w, h);
-    this.state.doors = obj.doors||[]; this.state.sluices = obj.sluices||[]; this.state.sites = obj.sites||[]; this.state.startPoints = obj.startPoints||[];
+    this.state.doors = (obj.doors||[]).map(d=>({...d})); // no suggested flag in bundle
+    this.state.sluices = obj.sluices||[]; this.state.sites = obj.sites||[]; this.state.startPoints = obj.startPoints||[];
     document.getElementById('meta-name').value = obj.meta?.name || ''; document.getElementById('meta-notes').value = obj.meta?.notes || '';
     this.drawAll(); this._updateLists(); if (this.state.calibration.px_per_meter) this.setCalibration(this.state.calibration.px_per_meter);
   }
 
   async runInWorker(fn, payload){
     return await new Promise((resolve,reject)=>{ const w = new Worker('./src/worker.js', {type:'module'}); w.onmessage = (e)=>{ w.terminate(); if (e.data?.error) reject(new Error(e.data.error)); else resolve(e.data); }; w.onerror = (e)=>{ w.terminate(); reject(e.message || e.error); }; w.postMessage({fn, payload}); });
-  }
-
-  listDoorSuggestions(doors){
-    const c = document.getElementById('door-suggestions');
-    if (!doors?.length){ c.textContent='Keine automatischen Vorschläge.'; return; }
-    c.innerHTML=''; doors.slice(0,30).forEach((d,i)=>{ const div=document.createElement('div'); div.innerHTML=`🔓 Öffnung vorgeschlagen bei (${d.x},${d.y}) Größe ${d.w}×${d.h} <button data-i="${i}">Übernehmen</button>`; c.appendChild(div); });
-    c.querySelectorAll('button').forEach(btn => { btn.addEventListener('click', ()=>{ const i=parseInt(btn.dataset.i,10); this.state.doors.push(doors[i]); this.drawAll(); }); });
   }
 
   preflight(){

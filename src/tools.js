@@ -1,1 +1,1 @@
-// Platzhalter für spätere Tool-Logik (Pinsel, Polygon etc.).
+// Erweiterungspunkte für künftige Tools (Polygon/Pinsel/Snap-to-Edge).

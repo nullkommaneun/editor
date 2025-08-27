@@ -3,7 +3,7 @@ import { rgbToLab } from './color.js';
 export function kmeans(imageData, k=6, maxIter=12){
   const {data, width, height} = imageData;
   const n = width*height;
-  const step = Math.max(1, Math.floor(n / (200*1000))); // bis ~200k Samples
+  const step = Math.max(1, Math.floor(n / (200*1000)));
   const points = [];
   for (let i=0;i<n;i+=step){
     const r = data[i*4], g=data[i*4+1], b=data[i*4+2];
